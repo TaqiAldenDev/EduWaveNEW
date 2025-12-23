@@ -65,6 +65,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         :root {
             --accent-color: #435ebe;
         }
+
+        /* Responsive styles */
+        .hero {
+            padding: 40px 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        @media (max-width: 991px) {
+            .hero {
+                padding: 20px 0;
+            }
+
+            .hero-img {
+                display: none;
+            }
+
+            .col-lg-5 {
+                max-width: 100%;
+                flex: 0 0 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .hero {
+                padding: 10px 0;
+            }
+
+            .card-body {
+                padding: 1.5rem !important;
+            }
+
+            .credential-item {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 5px;
+            }
+
+            .credential-item span:last-child {
+                font-size: 0.85rem;
+                word-break: break-all;
+            }
+
+            h2.fw-bold {
+                font-size: 1.5rem;
+            }
+
+            .demo-credentials {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (min-width: 577px) and (max-width: 768px) {
+            .card-body {
+                padding: 2rem !important;
+            }
+        }
     </style>
 </head>
 

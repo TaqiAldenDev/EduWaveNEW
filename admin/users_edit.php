@@ -109,19 +109,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </a>
                         </li>
 
-                        <li class="sidebar-item  has-sub active">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="users_list.php" class='sidebar-link'>
                                 <i class="bi bi-people"></i>
                                 <span>User Management</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item">
-                                    <a href="users_list.php">Users List</a>
-                                </li>
-                                <li class="submenu-item">
-                                    <a href="users_add.php">Add User</a>
-                                </li>
-                            </ul>
                         </li>
 
                         <li class="sidebar-item  has-sub">
@@ -139,28 +131,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="library_add.php" class='sidebar-link'>
                                 <i class="bi bi-book"></i>
                                 <span>Library Management</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item ">
-                                    <a href="library_add.php">Add Book</a>
-                                </li>
-                            </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="event_add.php" class='sidebar-link'>
                                 <i class="bi bi-calendar-check"></i>
                                 <span>Calendar Events</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item ">
-                                    <a href="event_add.php">Add Event</a>
-                                </li>
-                            </ul>
                         </li>
 
                         <li class="sidebar-item">

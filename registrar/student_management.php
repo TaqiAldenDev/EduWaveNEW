@@ -156,40 +156,25 @@ $classes = $classes_stmt->fetchAll();
                             </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="parent_management.php" class='sidebar-link'>
                                 <i class="bi bi-people"></i>
                                 <span>Parent Management</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item">
-                                    <a href="parent_management.php">Manage Parents</a>
-                                </li>
-                            </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="student_transfer.php" class='sidebar-link'>
                                 <i class="bi bi-exchange"></i>
                                 <span>Student Transfer</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item">
-                                    <a href="student_transfer.php">Transfer Student</a>
-                                </li>
-                            </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
-                            <a href="#" class='sidebar-link'>
+                        <li class="sidebar-item">
+                            <a href="certificate_issue.php" class='sidebar-link'>
                                 <i class="bi bi-award"></i>
                                 <span>Certificate Issuing</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item">
-                                    <a href="certificate_issue.php">Issue Certificate</a>
-                                </li>
-                            </ul>
                         </li>
 
                         <li class="sidebar-item">

@@ -186,11 +186,7 @@ body {
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link <?= strpos($current_page, 'users') !== false ? 'active' : '' ?>" href="/eduwave/admin/users_list.php">
-                    <i class="fas fa-users"></i> User Management
-                </a>
-            </li>
+
             <li class="nav-item">
                 <a class="nav-link <?= strpos($current_page, 'class') !== false || strpos($current_page, 'subject') !== false ? 'active' : '' ?>" href="/eduwave/admin/classes.php">
                     <i class="fas fa-chalkboard-teacher"></i> Classes & Subjects
