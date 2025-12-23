@@ -72,39 +72,54 @@ try {
     }
 
     // Get recent homework assignments
-    $stmt = $pdo->prepare("SELECT a.title, s.name as subject_name, u.name as teacher_name FROM assignments a JOIN subjects s ON a.subject_id = s.id JOIN users u ON a.teacher_id = u.id WHERE a.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY a.created_at DESC LIMIT 3");
-    $stmt->execute();
-    $recent_homework = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recent_homework = [];
+    try {
+        $stmt = $pdo->prepare("SELECT a.title, s.name as subject_name, u.name as teacher_name FROM assignments a JOIN subjects s ON a.subject_id = s.id JOIN users u ON a.teacher_id = u.id WHERE a.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY a.created_at DESC LIMIT 3");
+        $stmt->execute();
+        $recent_homework = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Error already handled - $recent_homework remains empty
+    }
 
     foreach ($recent_homework as $hw) {
         $recent_activities[] = [
             'activity' => 'New homework assigned',
             'details' => $hw['teacher_name'] . ' assigned "' . $hw['title'] . '" in ' . $hw['subject_name'],
-            'time' => $hw['created_at'],
+            'time' => $hw['created_at'] ?? date('Y-m-d H:i:s'),
             'icon' => 'book',
             'color' => 'warning'
         ];
     }
 
     // Get recent grade entries
-    $stmt = $pdo->prepare("SELECT g.score, s.name as subject_name, u.name as student_name, g.exam_type FROM grades g JOIN subjects s ON g.subject_id = s.id JOIN users u ON g.student_id = u.id WHERE g.date_given >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY g.date_given DESC LIMIT 2");
-    $stmt->execute();
-    $recent_grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recent_grades = [];
+    try {
+        $stmt = $pdo->prepare("SELECT g.score, s.name as subject_name, u.name as student_name, g.exam_type FROM grades g JOIN subjects s ON g.subject_id = s.id JOIN users u ON g.student_id = u.id WHERE g.date_given >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY g.date_given DESC LIMIT 2");
+        $stmt->execute();
+        $recent_grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Error already handled - $recent_grades remains empty
+    }
 
     foreach ($recent_grades as $grade) {
         $recent_activities[] = [
             'activity' => 'Grade recorded',
             'details' => $grade['student_name'] . ' scored ' . $grade['score'] . ' in ' . $grade['subject_name'] . ' (' . $grade['exam_type'] . ')',
-            'time' => $grade['date_given'],
+            'time' => $grade['date_given'] ?? $grade['created_at'] ?? date('Y-m-d H:i:s'),
             'icon' => 'award',
             'color' => 'success'
         ];
     }
 
     // Get recent user registrations (limit to 2 to avoid overcrowding)
-    $stmt = $pdo->prepare("SELECT name, role, created_at FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC LIMIT 2");
-    $stmt->execute();
-    $recent_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $recent_users = [];
+    try {
+        $stmt = $pdo->prepare("SELECT name, role, created_at FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC LIMIT 2");
+        $stmt->execute();
+        $recent_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Error already handled - $recent_users remains empty
+    }
 
     foreach ($recent_users as $user) {
         $recent_activities[] = [
@@ -450,17 +465,6 @@ try {
                                     <div class="card-body">
                                         <canvas id="userRegistrationChart" width="400" height="200"></canvas>
                                         <p class="mt-3 text-muted">Showing new user registrations over the past week.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4>Recent Activity Overview</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <canvas id="activityChart" width="400" height="200"></canvas>
-                                        <p class="mt-3 text-muted">Activity summary for the past 7 days.</p>
                                     </div>
                                 </div>
                             </div>

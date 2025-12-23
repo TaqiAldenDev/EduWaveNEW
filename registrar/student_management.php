@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_student'])) {
     try {
         $pdo->beginTransaction();
         
-        // Delete from student_classes first
+        // Delete from student_classes (may not exist)
         $stmt = $pdo->prepare('DELETE FROM student_classes WHERE student_id = ?');
         $stmt->execute([$student_id]);
         
@@ -24,12 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_student'])) {
         $stmt = $pdo->prepare('DELETE FROM parent_student WHERE student_id = ?');
         $stmt->execute([$student_id]);
         
-        // Delete from grades
+        // Delete from grades (may not exist)
         $stmt = $pdo->prepare('DELETE FROM grades WHERE student_id = ?');
         $stmt->execute([$student_id]);
         
-        // Delete from attendance
+        // Delete from attendance (may not exist)
         $stmt = $pdo->prepare('DELETE FROM attendance WHERE student_id = ?');
+        $stmt->execute([$student_id]);
+        
+        // Delete from assignments submissions (may not exist)
+        $stmt = $pdo->prepare('DELETE FROM submissions WHERE student_id = ?');
         $stmt->execute([$student_id]);
         
         // Finally delete the user
@@ -61,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_student'])) {
         
         // Check section capacity if specified
         if ($section_id) {
-            $capacity_stmt = $pdo->prepare('SELECT s.max_students, COUNT(sc.student_id) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? AND s.id != (SELECT section_id FROM student_classes WHERE student_id = ?) GROUP BY s.id');
+            $capacity_stmt = $pdo->prepare('SELECT s.max_students, COALESCE(COUNT(sc.student_id), 0) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? AND s.id != COALESCE((SELECT section_id FROM student_classes WHERE student_id = ?), 0) GROUP BY s.id');
             $capacity_stmt->execute([$section_id, $student_id]);
             $capacity = $capacity_stmt->fetch();
             
@@ -70,9 +74,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_student'])) {
             }
         }
         
-        // Update student class assignment
-        $stmt = $pdo->prepare('UPDATE student_classes SET class_id = ?, section_id = ? WHERE student_id = ?');
-        $stmt->execute([$class_id, $section_id, $student_id]);
+        // Check if student already has a class assignment
+        $check_stmt = $pdo->prepare('SELECT COUNT(*) FROM student_classes WHERE student_id = ?');
+        $check_stmt->execute([$student_id]);
+        
+        if ($check_stmt->fetchColumn() > 0) {
+            // Update existing class assignment
+            $stmt = $pdo->prepare('UPDATE student_classes SET class_id = ?, section_id = ?, academic_year = ? WHERE student_id = ?');
+            $stmt->execute([$class_id, $section_id, date('Y'), $student_id]);
+        } else {
+            // Insert new class assignment
+            $stmt = $pdo->prepare('INSERT INTO student_classes (student_id, class_id, section_id, academic_year) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$student_id, $class_id, $section_id, date('Y')]);
+        }
         
         $pdo->commit();
         $message = 'Student updated successfully!';
@@ -89,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_student'])) {
     }
 }
 
-// Get all students with their class information
-$students_stmt = $pdo->query('SELECT u.id, u.name, u.email, c.grade_name, s.section_name, sc.class_id, sc.section_id FROM users u JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id LEFT JOIN sections s ON sc.section_id = s.id WHERE u.role = "Student" ORDER BY u.name');
+// Get all students with their class information (including unenrolled students)
+$students_stmt = $pdo->query('SELECT u.id, u.name, u.email, c.grade_name, s.section_name, sc.class_id, sc.section_id FROM users u LEFT JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id LEFT JOIN sections s ON sc.section_id = s.id WHERE u.role = "Student" ORDER BY u.name');
 $students = $students_stmt->fetchAll();
 
 // Get classes for dropdown
@@ -227,7 +241,7 @@ $classes = $classes_stmt->fetchAll();
                                                 <tr>
                                                     <td><?= htmlspecialchars($student['name']) ?></td>
                                                     <td><?= htmlspecialchars($student['email']) ?></td>
-                                                    <td><?= htmlspecialchars($student['grade_name']) ?></td>
+                                                    <td><?= htmlspecialchars($student['grade_name'] ?? 'Not enrolled') ?></td>
                                                     <td><?= htmlspecialchars($student['section_name'] ?? 'Not assigned') ?></td>
                                                     <td>
                                                         <button class="btn btn-sm btn-outline-primary me-1" onclick="editStudent(<?= htmlspecialchars(json_encode($student)) ?>)">
@@ -336,9 +350,9 @@ $classes = $classes_stmt->fetchAll();
             document.getElementById('edit_student_id').value = student.id;
             document.getElementById('edit_name').value = student.name;
             document.getElementById('edit_email').value = student.email;
-            document.getElementById('edit_class_id').value = student.class_id;
+            document.getElementById('edit_class_id').value = student.class_id || '';
             
-            loadEditSections(student.class_id, student.section_id);
+            loadEditSections(student.class_id || '', student.section_id || '');
             
             new bootstrap.Modal(document.getElementById('editModal')).show();
         }

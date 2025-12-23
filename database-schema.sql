@@ -208,6 +208,7 @@ CREATE TABLE `grades` (
   `exam_type` varchar(30) DEFAULT NULL,
   `score` decimal(5,2) DEFAULT NULL,
   `date_given` date DEFAULT NULL,
+  `comments` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `student_id` (`student_id`),
   KEY `subject_id` (`subject_id`),
@@ -274,12 +275,32 @@ CREATE TABLE `notifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `message` text NOT NULL,
+  `type` varchar(50) DEFAULT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ===============================================
+-- Homework Submissions Table - Student homework submission tracking
+-- ===============================================
+CREATE TABLE `homework_submissions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `assignment_id` int(11) DEFAULT NULL,
+  `student_id` int(11) DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT NULL,
+  `status` enum('pending','submitted','graded','late') DEFAULT 'pending',
+  `submitted_at` timestamp NULL DEFAULT NULL,
+  `graded_at` timestamp NULL DEFAULT NULL,
+  `teacher_feedback` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_homework_submission` (`assignment_id`,`student_id`),
+  KEY `student_id` (`student_id`),
+  CONSTRAINT `homework_submissions_ibfk_1` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `homework_submissions_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===============================================
 -- Initial Data Seeding
@@ -343,6 +364,40 @@ INSERT INTO `subjects` (`name`, `class_id`) VALUES
 ('Science', 3),
 ('English', 3);
 
+-- Default Subjects for middle and high grades (4-10)
+INSERT INTO `subjects` (`name`, `class_id`) VALUES
+('Mathematics', 4),
+('Science', 4),
+('English', 4),
+('Social Studies', 4),
+('Mathematics', 5),
+('Science', 5),
+('English', 5),
+('Social Studies', 5),
+('Mathematics', 6),
+('Science', 6),
+('English', 6),
+('Social Studies', 6),
+('Mathematics', 7),
+('Science', 7),
+('English', 7),
+('Social Studies', 7),
+('Physics', 8),
+('Chemistry', 8),
+('Biology', 8),
+('Mathematics', 8),
+('English', 8),
+('Physics', 9),
+('Chemistry', 9),
+('Biology', 9),
+('Mathematics', 9),
+('English', 9),
+('Physics', 10),
+('Chemistry', 10),
+('Biology', 10),
+('Mathematics', 10),
+('English', 10);
+
 -- Default Users (password: password for all accounts)
 INSERT INTO `users` (`name`, `email`, `password_hash`, `role`, `color_theme`) VALUES
 ('Admin User', 'admin@eduwave.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'blue'),
@@ -350,6 +405,42 @@ INSERT INTO `users` (`name`, `email`, `password_hash`, `role`, `color_theme`) VA
 ('Teacher User', 'teacher@eduwave.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Teacher', 'orange'),
 ('Student User', 'student@eduwave.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Student', 'purple'),
 ('Parent User', 'parent@eduwave.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Parent', 'yellow');
+
+-- Sample Parent-Student Relationships
+INSERT INTO `parent_student` (`parent_id`, `student_id`, `relation`) VALUES
+(5, 4, 'Father');
+
+-- Sample Student Enrollment
+INSERT INTO `student_classes` (`student_id`, `class_id`, `academic_year`, `section_id`) VALUES
+(4, 1, 2025, 1);
+
+-- Sample Teacher Assignments
+INSERT INTO `teacher_assignments` (`teacher_id`, `class_id`, `subject_id`) VALUES
+(3, 1, 1),
+(3, 1, 2),
+(3, 1, 3);
+
+-- Sample Assignments
+INSERT INTO `assignments` (`teacher_id`, `subject_id`, `class_id`, `title`, `description`, `due_date`) VALUES
+(3, 1, 1, 'Math Homework Week 1', 'Complete exercises 1-20 from Chapter 1', '2025-12-30'),
+(3, 2, 1, 'Science Project', 'Create a model of the solar system', '2026-01-15');
+
+-- Sample Homework Submissions
+INSERT INTO `homework_submissions` (`assignment_id`, `student_id`, `status`, `submitted_at`) VALUES
+(1, 4, 'pending', NULL),
+(2, 4, 'submitted', '2025-12-20 10:30:00');
+
+-- Sample Grades with Comments
+INSERT INTO `grades` (`student_id`, `subject_id`, `exam_type`, `score`, `date_given`, `comments`) VALUES
+(4, 1, 'Quiz', 85.50, '2025-12-15', 'Good work on basic arithmetic, needs practice with word problems'),
+(4, 2, 'Test', 78.00, '2025-12-18', 'Shows understanding of basic concepts, improve scientific notation');
+
+-- Sample Notifications with Types
+INSERT INTO `notifications` (`user_id`, `message`, `type`, `is_read`) VALUES
+(4, 'New math assignment has been posted', 'assignment', 0),
+(4, 'Your science project submission has been graded', 'grade', 0),
+(5, 'Your child has a new assignment', 'assignment', 0),
+(5, 'Parent-teacher meeting scheduled for next week', 'general', 1);
 
 COMMIT;
 
@@ -368,12 +459,33 @@ COMMIT;
 -- 3. Update the database connection settings in includes/config.php
 -- 4. The system is ready to use!
 --
+-- Features Included:
+-- - Complete user management (Admin, Registrar, Teacher, Student, Parent roles)
+-- - Class and section management with enrollment system
+-- - Subject management with teacher assignments
+-- - Homework/assignment system with file uploads
+-- - Grade management with teacher comments
+-- - Attendance tracking and reporting
+-- - Library management system
+-- - Certificate generation
+-- - Calendar events and scheduling
+-- - Notification system with categorized alerts
+-- - Parent dashboard with child progress monitoring
+--
 -- Default Login Credentials (password: password):
 -- - Admin: admin@eduwave.com
 -- - Registrar: registrar@eduwave.com
 -- - Teacher: teacher@eduwave.com
 -- - Student: student@eduwave.com
 -- - Parent: parent@eduwave.com
+--
+-- Sample Data Included:
+-- - Grades 1-10 with 3 sections each
+-- - Core subjects for all grade levels
+-- - Sample parent-student relationships
+-- - Sample assignments and submissions
+-- - Sample grades with teacher comments
+-- - Sample notifications
 --
 -- Note: All test accounts use the same password: 'password' (without quotes)
 -- For production use, change these passwords immediately after setup.

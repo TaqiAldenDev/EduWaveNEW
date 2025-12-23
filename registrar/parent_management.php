@@ -79,12 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlink_student'])) {
 $parents_stmt = $pdo->query('SELECT id, name, email, created_at FROM users WHERE role = "Parent" ORDER BY name');
 $parents = $parents_stmt->fetchAll();
 
-// Get students for dropdown with class info
-$students_stmt = $pdo->query('SELECT u.id, u.name, c.grade_name, sc.class_id FROM users u JOIN student_classes sc ON u.id = sc.student_id JOIN classes c ON sc.class_id = c.id WHERE u.role = "Student" ORDER BY u.name');
+// Get students for dropdown with class info (including unenrolled students)
+$students_stmt = $pdo->query('SELECT u.id, u.name, c.grade_name, sc.class_id FROM users u LEFT JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id WHERE u.role = "Student" ORDER BY u.name');
 $students = $students_stmt->fetchAll();
 
 // Get parent-student relationships with detailed info
-$relationships_stmt = $pdo->query('SELECT ps.id as link_id, ps.parent_id, ps.student_id, ps.relation, p.name as parent_name, p.email as parent_email, s.name as student_name, c.grade_name as class_name FROM parent_student ps JOIN users p ON ps.parent_id = p.id JOIN users s ON ps.student_id = s.id JOIN student_classes sc ON s.id = sc.student_id JOIN classes c ON sc.class_id = c.id ORDER BY p.name, s.name');
+$relationships_stmt = $pdo->query('SELECT ps.id as link_id, ps.parent_id, ps.student_id, ps.relation, p.name as parent_name, p.email as parent_email, s.name as student_name, c.grade_name as class_name FROM parent_student ps JOIN users p ON ps.parent_id = p.id JOIN users s ON ps.student_id = s.id LEFT JOIN student_classes sc ON s.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id ORDER BY p.name, s.name');
 $relationships = $relationships_stmt->fetchAll();
 ?>
 
@@ -239,7 +239,7 @@ $relationships = $relationships_stmt->fetchAll();
                                         <label for="student_id" class="form-label">Student</label>
                                         <select class="form-select" id="student_id" name="student_id" required>
                                             <?php foreach ($students as $student): ?>
-                                                <option value="<?= $student['id'] ?>"><?= htmlspecialchars($student['name']) ?> (<?= htmlspecialchars($student['grade_name']) ?>)</option>
+                                                <option value="<?= $student['id'] ?>"><?= htmlspecialchars($student['name']) ?><?= $student['grade_name'] ? ' (' . htmlspecialchars($student['grade_name']) . ')' : ' (Not enrolled)' ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -273,7 +273,7 @@ $relationships = $relationships_stmt->fetchAll();
                                         <select class="form-select" id="classFilter" onchange="filterParents()">
                                             <option value="">All Classes</option>
                                             <?php
-                                            $classes_filter = $pdo->query('SELECT DISTINCT c.id, c.grade_name FROM classes c JOIN student_classes sc ON c.id = sc.class_id ORDER BY c.grade_name')->fetchAll();
+                                            $classes_filter = $pdo->query('SELECT DISTINCT c.id, c.grade_name FROM classes c LEFT JOIN student_classes sc ON c.id = sc.class_id ORDER BY c.grade_name')->fetchAll();
                                             foreach ($classes_filter as $class): ?>
                                                 <option value="<?= $class['id'] ?>"><?= htmlspecialchars($class['grade_name']) ?></option>
                                             <?php endforeach; ?>
@@ -293,15 +293,15 @@ $relationships = $relationships_stmt->fetchAll();
                                         </thead>
                                         <tbody>
                                             <?php foreach ($parents as $parent): 
-                                                $children_stmt = $pdo->prepare('SELECT ps.id as link_id, u.name as student_name, c.grade_name, ps.relation FROM parent_student ps JOIN users u ON ps.student_id = u.id JOIN student_classes sc ON u.id = sc.student_id JOIN classes c ON sc.class_id = c.id WHERE ps.parent_id = ? ORDER BY u.name');
+                                                $children_stmt = $pdo->prepare('SELECT ps.id as link_id, u.name as student_name, c.grade_name, ps.relation FROM parent_student ps JOIN users u ON ps.student_id = u.id LEFT JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id WHERE ps.parent_id = ? ORDER BY u.name');
                                                 $children_stmt->execute([$parent['id']]);
                                                 $children = $children_stmt->fetchAll();
                                             ?>
-                                                <tr data-parent-name="<?= strtolower(htmlspecialchars($parent['name'])) ?>" data-class="<?= htmlspecialchars($parent['class_id'] ?? '') ?>">
+                                                <tr data-parent-name="<?= strtolower(htmlspecialchars($parent['name'])) ?>" data-class-ids="<?= htmlspecialchars(implode(',', array_unique(array_column($children, 'class_id')))) ?>">
                                                     <td>
                                                         <strong><?= htmlspecialchars($parent['name']) ?></strong>
-                                                        <br><small class="text-muted"><?= htmlspecialchars($parent['email']) ?></small>
                                                     </td>
+                                                    <td><?= htmlspecialchars($parent['email']) ?></td>
                                                     <td><?= date('M j, Y', strtotime($parent['created_at'])) ?></td>
                                                     <td>
                                                         <?php if (empty($children)): ?>
@@ -311,7 +311,7 @@ $relationships = $relationships_stmt->fetchAll();
                                                                 <div class="mb-1">
                                                                     <span class="badge bg-primary me-2">
                                                                         <?= htmlspecialchars($child['student_name']) ?> 
-                                                                        <small>(<?= htmlspecialchars($child['grade_name']) ?>)</small>
+                                                                        <small>(<?= htmlspecialchars($child['grade_name'] ?? 'Not enrolled') ?>)</small>
                                                                     </span>
                                                                     <small class="text-muted"><?= htmlspecialchars($child['relation']) ?></small>
                                                                 </div>
@@ -390,9 +390,9 @@ $relationships = $relationships_stmt->fetchAll();
             
             rows.forEach(row => {
                 const parentName = row.getAttribute('data-parent-name');
-                const classId = row.getAttribute('data-class');
+                const classIds = row.getAttribute('data-class-ids');
                 const matchesSearch = parentName.includes(searchTerm);
-                const matchesClass = !classFilter || classId === classFilter;
+                const matchesClass = !classFilter || (classIds && classIds.split(',').includes(classFilter));
                 
                 row.style.display = matchesSearch && matchesClass ? '' : 'none';
             });
@@ -427,7 +427,7 @@ $relationships = $relationships_stmt->fetchAll();
                                     <div>
                                         <strong>${child.student_name}</strong>
                                         <br>
-                                        <small class="text-muted">${child.grade_name} - ${child.relation}</small>
+                                        <small class="text-muted">${child.grade_name || 'Not enrolled'} - ${child.relation}</small>
                                     </div>
                                     <span class="badge bg-success">Linked</span>
                                 </div>

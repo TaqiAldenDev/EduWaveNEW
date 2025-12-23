@@ -18,7 +18,7 @@ if (!isset($_GET['class_id']) || empty($_GET['class_id'])) {
 $class_id = $_GET['class_id'];
 
 try {
-    $stmt = $pdo->prepare('SELECT s.id, s.section_name, s.max_students, COUNT(sc.student_id) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.class_id = ? GROUP BY s.id ORDER BY s.section_name');
+    $stmt = $pdo->prepare('SELECT s.id, s.section_name, s.max_students, COALESCE(COUNT(sc.student_id), 0) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.class_id = ? GROUP BY s.id ORDER BY s.section_name');
     $stmt->execute([$class_id]);
     $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

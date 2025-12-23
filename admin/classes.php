@@ -29,35 +29,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_class'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manage_section'])) {
-    $action = $_POST['action'];
-    $class_id = $_POST['class_id'];
-    $section_name = $_POST['section_name'];
-    $max_students = $_POST['max_students'];
-
+    $action = $_POST['action'] ?? '';
+    $section_message = '';
+    
     try {
         if ($action === 'add') {
-            $stmt = $pdo->prepare('INSERT INTO sections (class_id, section_name, max_students) VALUES (?, ?, ?)');
-            $stmt->execute([$class_id, $section_name, $max_students]);
-            $section_message = 'Section added successfully!';
-        } elseif ($action === 'edit') {
-            $section_id = $_POST['section_id'];
-            $stmt = $pdo->prepare('UPDATE sections SET section_name = ?, max_students = ? WHERE id = ?');
-            $stmt->execute([$section_name, $max_students, $section_id]);
-            $section_message = 'Section updated successfully!';
-        } elseif ($action === 'delete') {
-            $section_id = $_POST['section_id'];
-            // Check if there are students in this section
-            $check_stmt = $pdo->prepare('SELECT COUNT(*) as count FROM student_classes WHERE section_id = ?');
-            $check_stmt->execute([$section_id]);
-            $student_count = $check_stmt->fetch()['count'];
-
-            if ($student_count > 0) {
-                $section_message = 'Cannot delete section with enrolled students. Please move students first.';
+            $class_id = $_POST['class_id'] ?? '';
+            $section_name = $_POST['section_name'] ?? '';
+            $max_students = $_POST['max_students'] ?? 30;
+            
+            if (empty($class_id) || empty($section_name) || !isset($_POST['max_students'])) {
+                $section_message = 'Please fill in all required fields.';
             } else {
-                $stmt = $pdo->prepare('DELETE FROM sections WHERE id = ?');
-                $stmt->execute([$section_id]);
-                $section_message = 'Section deleted successfully!';
+                $stmt = $pdo->prepare('INSERT INTO sections (class_id, section_name, max_students) VALUES (?, ?, ?)');
+                $stmt->execute([$class_id, $section_name, $max_students]);
+                $section_message = 'Section added successfully!';
             }
+        } elseif ($action === 'edit') {
+            $class_id = $_POST['class_id'] ?? '';
+            $section_name = $_POST['section_name'] ?? '';
+            $max_students = $_POST['max_students'] ?? 30;
+            $section_id = $_POST['section_id'] ?? '';
+            
+            if (empty($class_id) || empty($section_name) || !isset($_POST['max_students']) || !isset($_POST['section_id'])) {
+                $section_message = 'Please fill in all required fields.';
+            } else {
+                $stmt = $pdo->prepare('UPDATE sections SET section_name = ?, max_students = ? WHERE id = ?');
+                $stmt->execute([$section_name, $max_students, $section_id]);
+                $section_message = 'Section updated successfully!';
+            }
+        } elseif ($action === 'delete') {
+            $section_id = $_POST['section_id'] ?? '';
+            
+            if (!isset($_POST['section_id']) || empty($_POST['section_id'])) {
+                $section_message = 'Please provide a section to delete.';
+            } else {
+                $check_stmt = $pdo->prepare('SELECT COUNT(*) as count FROM student_classes WHERE section_id = ?');
+                $check_stmt->execute([$section_id]);
+                $student_count = $check_stmt->fetch()['count'];
+
+                if ($student_count > 0) {
+                    $section_message = 'Cannot delete section with enrolled students. Please move students first.';
+                } else {
+                    $stmt = $pdo->prepare('DELETE FROM sections WHERE id = ?');
+                    $stmt->execute([$section_id]);
+                    $section_message = 'Section deleted successfully!';
+                }
+            }
+        } else {
+            $section_message = 'Invalid action specified.';
         }
     } catch (PDOException $e) {
         $section_message = 'Error managing section.';
@@ -227,16 +247,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manage_section'])) {
                                                 <tr>
                                                     <td><?= htmlspecialchars($class['id']) ?></td>
                                                     <td><?= htmlspecialchars($class['grade_name']) ?></td>
-                                                    <td><?= htmlspecialchars($class['notes']) ?></td>
+                                                    <td><?= htmlspecialchars($class['notes'] ?? '') ?></td>
                                                     <td>
-                                                        <span class="badge bg-info"><?= $class['student_count'] ?> students</span>
+                                                        <span class="badge bg-info"><?= ($class['student_count'] ?? 0) ?> students</span>
                                                     </td>
                                                     <td>
                                                         <?php foreach ($sections as $section): ?>
                                                             <div class="mb-1">
-                                                                <strong><?= htmlspecialchars($section['section_name']) ?></strong>: 
-                                                                <span class="badge bg-<?= $section['enrolled'] >= $section['max_students'] ? 'danger' : 'success' ?>">
-                                                                    <?= $section['enrolled'] ?>/<?= $section['max_students'] ?>
+                                                                <strong><?= htmlspecialchars($section['section_name'] ?? 'Unknown') ?></strong>: 
+                                                                <span class="badge bg-<?= ($section['enrolled'] ?? 0) >= ($section['max_students'] ?? 30) ? 'danger' : 'success' ?>">
+                                                                    <?= ($section['enrolled'] ?? 0) ?>/<?= ($section['max_students'] ?? 30) ?>
                                                                 </span>
                                                                 <button class="btn btn-sm btn-info ms-1 text-white" onclick="viewSection(<?= $section['id'] ?>, <?= $class['id'] ?>)" title="View Section Details">
                                                                     <i class="bi bi-eye-fill"></i>
@@ -249,13 +269,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manage_section'])) {
                                                     </td>
                                                      <td>
                                                          <a href="javascript:void(0)" onclick="editClass(<?= htmlspecialchars(json_encode($class)) ?>)" class="me-2 text-warning" title="Edit" style="text-decoration: none; font-size: 1.2rem;">
-                                                             <i class="bi bi-pencil"></i>
-                                                         </a>
-                                                         <a href="class_delete.php?id=<?= $class['id'] ?>" class="text-danger" title="Delete" style="text-decoration: none; font-size: 1.2rem;"
-                                                            onclick="return confirm('Are you sure you want to delete this class? This action cannot be undone.');">
-                                                             <i class="bi bi-trash"></i>
-                                                         </a>
-                                                     </td>
+                                                              <i class="bi bi-pencil"></i>
+                                                          </a>
+                                                          <a href="class_delete.php?id=<?= $class['id'] ?>" class="text-danger" title="Delete" style="text-decoration: none; font-size: 1.2rem;"
+                                                             onclick="return confirm('Are you sure you want to delete this class? This action cannot be undone.');">
+                                                              <i class="bi bi-trash"></i>
+                                                          </a>
+                                                      </td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>

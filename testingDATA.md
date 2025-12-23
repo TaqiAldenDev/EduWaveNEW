@@ -1,4 +1,3 @@
-# EduWave Testing Data
 
 This file contains sample accounts and data for testing the EduWave School Management System.
 

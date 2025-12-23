@@ -258,7 +258,7 @@ foreach ($books_paths as $path) {
                                                 <h6 class="text-muted font-semibold">Last Upload</h6>
                                                 <h6 class="font-extrabold mb-0">
                                                     <?php
-                                                    echo $last_upload ? date('M j', strtotime($last_upload['created_at'])) : 'N/A';
+                                                    echo isset($last_upload['created_at']) ? date('M j', strtotime($last_upload['created_at'])) : 'N/A';
                                                     ?>
                                                 </h6>
                                             </div>

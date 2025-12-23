@@ -30,7 +30,7 @@ try {
     }
     
     // Get linked children with class information
-    $children_stmt = $pdo->prepare('SELECT u.name as student_name, c.grade_name, ps.relation FROM parent_student ps JOIN users u ON ps.student_id = u.id JOIN student_classes sc ON u.id = sc.student_id JOIN classes c ON sc.class_id = c.id WHERE ps.parent_id = ? ORDER BY u.name');
+    $children_stmt = $pdo->prepare('SELECT u.name as student_name, c.grade_name, ps.relation FROM parent_student ps JOIN users u ON ps.student_id = u.id LEFT JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id WHERE ps.parent_id = ? ORDER BY u.name');
     $children_stmt->execute([$parent_id]);
     $children = $children_stmt->fetchAll(PDO::FETCH_ASSOC);
     

@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Check section capacity if specified
             if ($section_id) {
-                $capacity_stmt = $pdo->prepare('SELECT s.max_students, COUNT(sc.student_id) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? GROUP BY s.id');
+                $capacity_stmt = $pdo->prepare('SELECT s.max_students, COALESCE(COUNT(sc.student_id), 0) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? GROUP BY s.id');
                 $capacity_stmt->execute([$section_id]);
                 $capacity = $capacity_stmt->fetch();
                 

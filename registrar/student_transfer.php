@@ -17,15 +17,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Check section capacity if specified
             if ($new_section_id) {
-                $capacity_stmt = $pdo->prepare('SELECT s.max_students, COUNT(sc.student_id) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? GROUP BY s.id');
+                $capacity_stmt = $pdo->prepare('SELECT s.max_students, COALESCE(COUNT(sc.student_id), 0) as enrolled FROM sections s LEFT JOIN student_classes sc ON s.id = sc.section_id WHERE s.id = ? GROUP BY s.id');
                 $capacity_stmt->execute([$new_section_id]);
                 $capacity = $capacity_stmt->fetch();
                 
                 if ($capacity && $capacity['enrolled'] >= $capacity['max_students']) {
                     $message = 'Selected section is already at maximum capacity.';
                 } else {
-                    $stmt = $pdo->prepare('UPDATE student_classes SET class_id = ?, section_id = ? WHERE student_id = ?');
-                    $stmt->execute([$new_class_id, $new_section_id, $student_id]);
+                    // Check if student has existing class assignment
+                    $check_stmt = $pdo->prepare('SELECT COUNT(*) FROM student_classes WHERE student_id = ?');
+                    $check_stmt->execute([$student_id]);
+                    
+                    if ($check_stmt->fetchColumn() > 0) {
+                        // Update existing assignment
+                        $stmt = $pdo->prepare('UPDATE student_classes SET class_id = ?, section_id = ?, academic_year = ? WHERE student_id = ?');
+                        $stmt->execute([$new_class_id, $new_section_id, date('Y'), $student_id]);
+                    } else {
+                        // Insert new assignment
+                        $stmt = $pdo->prepare('INSERT INTO student_classes (student_id, class_id, section_id, academic_year) VALUES (?, ?, ?, ?)');
+                        $stmt->execute([$student_id, $new_class_id, $new_section_id, date('Y')]);
+                    }
                     $message = 'Student transferred successfully!';
                 }
             } else {
@@ -40,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$students_stmt = $pdo->query('SELECT u.id, u.name, c.grade_name as current_class, s.section_name as current_section FROM users u JOIN student_classes sc ON u.id = sc.student_id JOIN classes c ON sc.class_id = c.id LEFT JOIN sections s ON sc.section_id = s.id WHERE u.role = "Student" ORDER BY u.name');
+$students_stmt = $pdo->query('SELECT u.id, u.name, c.grade_name as current_class, s.section_name as current_section FROM users u LEFT JOIN student_classes sc ON u.id = sc.student_id LEFT JOIN classes c ON sc.class_id = c.id LEFT JOIN sections s ON sc.section_id = s.id WHERE u.role = "Student" ORDER BY u.name');
 $students = $students_stmt->fetchAll();
 
 $classes_stmt = $pdo->query('SELECT * FROM classes');
