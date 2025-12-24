@@ -262,7 +262,25 @@ $relationships = $relationships_stmt->fetchAll();
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
-                                <h4>Existing Parents and Their Children</h4>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4>Existing Parents and Their Children</h4>
+                                    <div class="dropdown">
+                                        <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-download me-1"></i>Export
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('xlsx')">
+                                                <i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Excel
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('txt')">
+                                                <i class="bi bi-file-earmark-text me-2 text-info"></i>Export Text
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('pdf')">
+                                                <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Export PDF
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div class="row mb-3">
@@ -382,7 +400,61 @@ $relationships = $relationships_stmt->fetchAll();
     <script src="../dashboardassets/js/bootstrap.bundle.min.js"></script>
     <script src="../dashboardassets/js/main.js"></script>
     
+    <!-- TableExport Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="../includes/tableExport.jquery.plugin/tableExport.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <script>
+        function exportTable(type) {
+            const fileName = 'parents_children_' + new Date().toISOString().slice(0, 10);
+            
+            const options = {
+                tableName: 'Parents and Their Children',
+                worksheetName: 'Parents',
+                fileName: fileName,
+                excelstyles: ['border-bottom', 'border-top', 'border-left', 'border-right'],
+                onMsoNumberFormat: function(cell, row, col) {
+                    if (!isNaN(cell.innerHTML) && cell.innerHTML !== '') {
+                        return '\\@';
+                    }
+                }
+            };
+
+        switch(type) {
+            case 'xlsx':
+                options.type = 'xlsx';
+                $('#parentsTable').tableExport(options);
+                break;
+            case 'txt':
+                options.type = 'txt';
+                $('#parentsTable').tableExport(options);
+                break;
+            case 'pdf':
+                exportToPDF();
+                break;
+        }
+        }
+
+        function exportToPDF() {
+            // Open in same window to preserve session
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export_pdf.php';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'type';
+            input.value = 'parents';
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
         function filterParents() {
             const searchTerm = document.getElementById('parentSearch').value.toLowerCase();
             const classFilter = document.getElementById('classFilter').value;

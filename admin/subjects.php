@@ -248,8 +248,26 @@ $teachers = $teachers_stmt->fetchAll();
                                 </form>
 
                                 <h5 class="mt-4">Existing Subjects</h5>
+                                <div class="d-flex gap-2 mb-3">
+                                    <div class="dropdown">
+                                        <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-download me-1"></i>Export
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('xlsx')">
+                                                <i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Excel
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('txt')">
+                                                <i class="bi bi-file-earmark-text me-2 text-info"></i>Export Text
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('pdf')">
+                                                <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Export PDF
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
                                 <div class="table-responsive">
-                                    <table class="table table-striped">
+                                    <table class="table table-striped" id="subjectsTable">
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
@@ -324,6 +342,13 @@ $teachers = $teachers_stmt->fetchAll();
     <script src="../dashboardassets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
     <script src="../dashboardassets/js/bootstrap.bundle.min.js"></script>
     <script src="../dashboardassets/js/main.js"></script>
+    
+    <!-- TableExport Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="../includes/tableExport.jquery.plugin/tableExport.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- Edit Subject Modal -->
     <div class="modal fade" id="editSubjectModal" tabindex="-1">
@@ -368,6 +393,53 @@ $teachers = $teachers_stmt->fetchAll();
             document.getElementById('edit_subject_class_id').value = subjectData.class_id;
 
             new bootstrap.Modal(document.getElementById('editSubjectModal')).show();
+        }
+
+        function exportTable(type) {
+            const fileName = 'subjects_' + new Date().toISOString().slice(0, 10);
+            
+            const options = {
+                tableName: 'Subjects',
+                worksheetName: 'Subjects',
+                fileName: fileName,
+                excelstyles: ['border-bottom', 'border-top', 'border-left', 'border-right'],
+                onMsoNumberFormat: function(cell, row, col) {
+                    if (!isNaN(cell.innerHTML) && cell.innerHTML !== '') {
+                        return '\\@';
+                    }
+                }
+            };
+
+        switch(type) {
+            case 'xlsx':
+                options.type = 'xlsx';
+                $('#subjectsTable').tableExport(options);
+                break;
+            case 'txt':
+                options.type = 'txt';
+                $('#subjectsTable').tableExport(options);
+                break;
+            case 'pdf':
+                exportToPDF();
+                break;
+        }
+        }
+
+        function exportToPDF() {
+            // Use POST to preserve session
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export_pdf.php';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'type';
+            input.value = 'subjects';
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            form.submit();
         }
 
         document.getElementById('assign_class_id').addEventListener('change', function() {

@@ -31,101 +31,200 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['issue_certificate']))
                 
                 if (!$student_info) {
                     $error = 'Student not found or not enrolled in the specified academic year.';
-                } else {
+                 } else {
                     $student_name = $student_info['student_name'];
                     $class_name = $student_info['grade_name'];
                     $class_id = $student_info['class_id'];
+                    
+                    // Validate that student has attendance/grade records for this academic year
+                    $attendance_check = $pdo->prepare('SELECT COUNT(*) FROM attendance a JOIN student_classes sc ON a.student_id = sc.student_id WHERE a.student_id = ? AND sc.academic_year = ?');
+                    $attendance_check->execute([$student_id, $academic_year]);
+                    $has_attendance = $attendance_check->fetchColumn() > 0;
+                    
+                    $grade_check = $pdo->prepare('SELECT COUNT(*) FROM grades g JOIN student_classes sc ON g.student_id = sc.student_id WHERE g.student_id = ? AND sc.academic_year = ?');
+                    $grade_check->execute([$student_id, $academic_year]);
+                    $has_grades = $grade_check->fetchColumn() > 0;
+                    
+                    if (!$has_attendance && !$has_grades) {
+                        $error = 'Student must have attendance or grade records for the specified academic year before a certificate can be issued.';
+                    }
 
                     // PDF generation with improved design
                     require_once __DIR__ . '/../includes/tcpdf/tcpdf.php';
-                    $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+                    
+                    // Create new PDF with landscape orientation for better certificate layout
+                    $pdf = new TCPDF('L', PDF_UNIT, 'A4', true, 'UTF-8', false);
                     $pdf->SetCreator(PDF_CREATOR);
                     $pdf->SetAuthor('EduWave School Management System');
                     $pdf->SetTitle('Graduation Certificate - ' . $student_name);
                     $pdf->SetSubject('Graduation Certificate');
                     
-                    // Set margins
-                    $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
-                    $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
-                    $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+                    // Set margins - smaller margins for better use of space
+                    $pdf->SetMargins(15, 15, 15);
+                    $pdf->SetHeaderMargin(10);
+                    $pdf->SetFooterMargin(10);
                     
                     // Add page
                     $pdf->AddPage();
                     
-                    // Set font
+                    // Set font for certificate
                     $pdf->SetFont('helvetica', '', 12);
                     
-                    // Improved certificate HTML with better styling
+                    // Professional certificate HTML with enhanced styling
                     $html = '
                     <style>
+                        .certificate-container {
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 40px;
+                            font-family: "Times New Roman", serif;
+                        }
+                        .certificate-border {
+                            border: 3px solid #2c3e50;
+                            padding: 30px;
+                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                            position: relative;
+                        }
                         .certificate-header {
                             text-align: center;
-                            margin-bottom: 30px;
+                            margin-bottom: 40px;
                         }
                         .certificate-title {
-                            font-size: 28px;
+                            font-size: 32px;
                             font-weight: bold;
                             color: #2c3e50;
                             margin-bottom: 10px;
+                            text-transform: uppercase;
+                            letter-spacing: 2px;
                         }
                         .certificate-subtitle {
-                            font-size: 20px;
-                            color: #7f8c8d;
-                            margin-bottom: 40px;
+                            font-size: 18px;
+                            color: #6c757d;
+                            margin-bottom: 30px;
+                            font-style: italic;
                         }
                         .certificate-body {
                             text-align: center;
-                            font-family: serif;
-                            line-height: 1.6;
+                            line-height: 1.8;
                         }
                         .student-name {
-                            font-size: 24px;
+                            font-size: 28px;
                             font-weight: bold;
-                            color: #2c3e50;
-                            margin: 20px 0;
+                            color: #007bff;
+                            margin: 25px 0;
                             text-decoration: underline;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        .certificate-text {
+                            font-size: 16px;
+                            margin: 20px 0;
+                            color: #495057;
                         }
                         .certificate-details {
                             font-size: 16px;
                             margin: 30px 0;
+                            background: rgba(0, 123, 255, 0.1);
+                            padding: 20px;
+                            border-radius: 8px;
+                            border-left: 4px solid #007bff;
                         }
                         .certificate-footer {
                             text-align: center;
                             margin-top: 50px;
                         }
-                        .signature-line {
-                            border-bottom: 1px solid #000;
-                            width: 200px;
-                            margin: 0 auto;
+                        .signature-section {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-end;
                             margin-top: 40px;
                         }
+                        .signature-box {
+                            text-align: center;
+                        }
+                        .signature-line {
+                            border-bottom: 2px solid #000;
+                            width: 250px;
+                            margin: 10px 0 5px 0;
+                        }
                         .signature-text {
+                            font-size: 14px;
+                            color: #6c757d;
                             margin-top: 5px;
+                        }
+                        .certificate-id {
+                            position: absolute;
+                            top: 20px;
+                            right: 30px;
                             font-size: 12px;
+                            color: #6c757d;
+                            background: #fff;
+                            padding: 5px 10px;
+                            border: 1px solid #dee2e6;
+                            border-radius: 4px;
+                        }
+                        .seal {
+                            position: absolute;
+                            bottom: 30px;
+                            right: 30px;
+                            width: 80px;
+                            height: 80px;
+                            border: 2px solid #dc3545;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: bold;
+                            color: #dc3545;
+                            font-size: 12px;
+                            background: #fff;
                         }
                     </style>
                     
-                    <div class="certificate-header">
-                        <div class="certificate-title">EduWave Virtual School</div>
-                        <div class="certificate-subtitle">Graduation Certificate</div>
-                    </div>
-                    
-                    <div class="certificate-body">
-                        <p>This is to certify that</p>
-                        <div class="student-name">' . htmlspecialchars($student_name) . '</div>
-                        <p>has successfully completed the academic requirements for</p>
-                        <div class="certificate-details">
-                            <strong>Grade Level:</strong> ' . htmlspecialchars($class_name) . '<br>
-                            <strong>Academic Year:</strong> ' . htmlspecialchars($academic_year) . '<br>
-                            <strong>Date of Completion:</strong> ' . date('F j, Y', strtotime($issue_date)) . '
+                    <div class="certificate-container">
+                        <div class="certificate-border">
+                            <div class="certificate-id">Certificate ID: CERT-' . $student_id . '-' . $academic_year . '</div>
+                            
+                            <div class="certificate-header">
+                                <div class="certificate-title">EduWave Virtual School</div>
+                                <div class="certificate-subtitle">Certificate of Graduation</div>
+                            </div>
+                            
+                            <div class="certificate-body">
+                                <div class="certificate-text">This is to certify that</div>
+                                <div class="student-name">' . htmlspecialchars($student_name) . '</div>
+                                <div class="certificate-text">has successfully completed all academic requirements and is hereby awarded this</div>
+                                <div class="certificate-text" style="font-size: 18px; font-weight: bold; margin: 20px 0;">GRADUATION CERTIFICATE</div>
+                                
+                                <div class="certificate-details">
+                                    <strong>Grade Level Completed:</strong> ' . htmlspecialchars($class_name) . '<br>
+                                    <strong>Academic Year:</strong> ' . htmlspecialchars($academic_year) . ' - ' . ($academic_year + 1) . '<br>
+                                    <strong>Date of Graduation:</strong> ' . date('F j, Y', strtotime($issue_date)) . '<br>
+                                    <strong>Student ID:</strong> ' . htmlspecialchars($student_id) . '
+                                </div>
+                                
+                                <div class="certificate-text">
+                                    This certificate is awarded in recognition of exceptional academic achievement, 
+                                    successful completion of all graduation requirements, and demonstration of 
+                                    outstanding dedication to learning and personal growth.
+                                </div>
+                            </div>
+                            
+                            <div class="certificate-footer">
+                                <div class="signature-section">
+                                    <div class="signature-box">
+                                        <div class="signature-line"></div>
+                                        <div class="signature-text">Registrar Signature</div>
+                                    </div>
+                                    <div class="signature-box">
+                                        <div class="signature-text">Date of Issuance</div>
+                                        <div>' . date('F j, Y', strtotime($issue_date)) . '</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="seal">OFFICIAL</div>
                         </div>
-                        <p>This certificate is awarded in recognition of the student\'s dedication, hard work, and successful completion of all academic requirements.</p>
-                    </div>
-                    
-                    <div class="certificate-footer">
-                        <div class="signature-line"></div>
-                        <div class="signature-text">Registrar Signature</div>
-                        <p style="margin-top: 20px;"><strong>Certificate ID:</strong> CERT-' . $student_id . '-' . $academic_year . '</p>
                     </div>';
                     
                     $pdf->writeHTML($html, true, false, true, false, '');
@@ -319,9 +418,14 @@ $academic_years = $years_stmt->fetchAll();
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="submit" name="issue_certificate" class="btn btn-primary">
-                                        <i class="bi bi-award"></i> Issue Certificate
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-outline-info" onclick="previewCertificate()">
+                                            <i class="bi bi-eye"></i> Preview
+                                        </button>
+                                        <button type="submit" name="issue_certificate" class="btn btn-primary">
+                                            <i class="bi bi-award"></i> Issue Certificate
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -364,9 +468,9 @@ $academic_years = $years_stmt->fetchAll();
                                                         <td><?= date('M j, Y', strtotime($cert['issue_date'])) ?></td>
                                                         <td><?= htmlspecialchars($cert['issued_by_name'] ?: 'System') ?></td>
                                                         <td>
-                                                            <a href="<?= $cert['file_path'] ?>" class="btn btn-sm btn-outline-primary" target="_blank" title="Download Certificate">
+                                                            <button class="btn btn-sm btn-outline-primary" onclick="downloadCertificate('<?= $cert['file_path'] ?>')" title="Download Certificate">
                                                                 <i class="bi bi-download"></i>
-                                                            </a>
+                                                            </button>
                                                             <button class="btn btn-sm btn-outline-info" onclick="viewCertificateDetails(<?= $cert['id'] ?>)" title="View Details">
                                                                 <i class="bi bi-eye"></i>
                                                             </button>
@@ -411,11 +515,36 @@ $academic_years = $years_stmt->fetchAll();
             });
         });
         
-        // Function to view certificate details (can be expanded)
-        function viewCertificateDetails(certificateId) {
-            // This could open a modal with more details or show additional information
-            alert('Certificate ID: ' + certificateId + '\n\nAdditional details can be shown in a modal here.');
-        }
+         // Function to view certificate details
+         function viewCertificateDetails(certificateId) {
+             // This could open a modal with more details or show additional information
+             alert('Certificate ID: ' + certificateId + '\n\nThis certificate has been issued and is valid for graduation verification.');
+         }
+         
+         // Function to preview certificate before issuing
+         function previewCertificate() {
+             const studentId = document.getElementById('student_id').value;
+             const academicYear = document.getElementById('academic_year').value;
+             
+             if (!studentId || !academicYear) {
+                 alert('Please select a student and academic year first.');
+                 return;
+             }
+             
+             // You could open a preview modal here showing how the certificate will look
+             alert('Certificate preview feature can be implemented here.\n\nStudent ID: ' + studentId + '\nAcademic Year: ' + academicYear);
+         }
+         
+         // Function to download issued certificate
+         function downloadCertificate(filePath) {
+             // Create a temporary link and trigger download
+             const link = document.createElement('a');
+             link.href = filePath;
+             link.download = filePath.split('/').pop();
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+         }
         
         // Form validation
         document.querySelector('form').addEventListener('submit', function(e) {
@@ -425,6 +554,13 @@ $academic_years = $years_stmt->fetchAll();
             if (!studentId || !academicYear) {
                 e.preventDefault();
                 alert('Please select both a student and an academic year.');
+                return;
+            }
+            
+            // Confirmation dialog
+            const confirmIssue = confirm('Are you sure you want to issue a graduation certificate for the selected student?\n\nThis action cannot be undone.');
+            if (!confirmIssue) {
+                e.preventDefault();
             }
         });
     </script>
