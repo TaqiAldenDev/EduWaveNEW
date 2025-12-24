@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     exit();
 }
 
-$type = $_GET['type'] ?? '';
+$type = $_REQUEST['type'] ?? '';
 
 switch($type) {
     case 'classes':

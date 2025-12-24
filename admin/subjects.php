@@ -254,8 +254,11 @@ $teachers = $teachers_stmt->fetchAll();
                                             <i class="bi bi-download me-1"></i>Export
                                         </button>
                                         <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                                            <li><a class="dropdown-item" href="#" onclick="exportTable('xlsx')">
+<li><a class="dropdown-item" href="#" onclick="exportTable('xlsx')">
                                                 <i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Excel
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('csv')">
+                                                <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i>Export CSV
                                             </a></li>
                                             <li><a class="dropdown-item" href="#" onclick="exportTable('txt')">
                                                 <i class="bi bi-file-earmark-text me-2 text-info"></i>Export Text
@@ -395,7 +398,7 @@ $teachers = $teachers_stmt->fetchAll();
             new bootstrap.Modal(document.getElementById('editSubjectModal')).show();
         }
 
-        function exportTable(type) {
+function exportTable(type) {
             const fileName = 'subjects_' + new Date().toISOString().slice(0, 10);
             
             const options = {
@@ -415,9 +418,11 @@ $teachers = $teachers_stmt->fetchAll();
                 options.type = 'xlsx';
                 $('#subjectsTable').tableExport(options);
                 break;
+            case 'csv':
+                exportToCSV();
+                break;
             case 'txt':
-                options.type = 'txt';
-                $('#subjectsTable').tableExport(options);
+                exportToTXT();
                 break;
             case 'pdf':
                 exportToPDF();
@@ -425,8 +430,51 @@ $teachers = $teachers_stmt->fetchAll();
         }
         }
 
+        function exportToCSV() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export.php';
+            form.style.display = 'none';
+            
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = 'type';
+            typeInput.value = 'subjects';
+            form.appendChild(typeInput);
+            
+            const formatInput = document.createElement('input');
+            formatInput.type = 'hidden';
+            formatInput.name = 'format';
+            formatInput.value = 'csv';
+            form.appendChild(formatInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function exportToTXT() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export.php';
+            form.style.display = 'none';
+            
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = 'type';
+            typeInput.value = 'subjects';
+            form.appendChild(typeInput);
+            
+            const formatInput = document.createElement('input');
+            formatInput.type = 'hidden';
+            formatInput.name = 'format';
+            formatInput.value = 'txt';
+            form.appendChild(formatInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
         function exportToPDF() {
-            // Use POST to preserve session
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'export_pdf.php';

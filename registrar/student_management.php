@@ -228,6 +228,9 @@ $classes = $classes_stmt->fetchAll();
                                             <li><a class="dropdown-item" href="#" onclick="exportTable('xlsx')">
                                                 <i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Excel
                                             </a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="exportTable('csv')">
+                                                <i class="bi bi-file-earmark-spreadsheet me-2 text-warning"></i>Export CSV
+                                            </a></li>
                                             <li><a class="dropdown-item" href="#" onclick="exportTable('txt')">
                                                 <i class="bi bi-file-earmark-text me-2 text-info"></i>Export Text
                                             </a></li>
@@ -390,14 +393,62 @@ $classes = $classes_stmt->fetchAll();
                 options.type = 'xlsx';
                 $('#studentsTable').tableExport(options);
                 break;
+            case 'csv':
+                exportToCSV();
+                break;
             case 'txt':
-                options.type = 'txt';
-                $('#studentsTable').tableExport(options);
+                exportToTXT();
                 break;
             case 'pdf':
                 exportToPDF();
                 break;
         }
+        }
+
+        function exportToCSV() {
+            // Use POST to preserve session
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export.php';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'type';
+            input.value = 'csv';
+            form.appendChild(input);
+
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'data_type';
+            dataInput.value = 'students';
+            form.appendChild(dataInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function exportToTXT() {
+            // Use POST to preserve session
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'export.php';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'type';
+            input.value = 'txt';
+            form.appendChild(input);
+
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'data_type';
+            dataInput.value = 'students';
+            form.appendChild(dataInput);
+            
+            document.body.appendChild(form);
+            form.submit();
         }
 
         function exportToPDF() {

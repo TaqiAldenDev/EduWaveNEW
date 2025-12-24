@@ -1,10 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 
-// Define constant to avoid TCPDF config issues
-if (!defined('K_TCPDF_EXTERNAL_CONFIG')) {
-    define('K_TCPDF_EXTERNAL_CONFIG', true);
-}
+// Define required constant to prevent TCPDF config issues
+define('K_TCPDF_EXTERNAL_CONFIG', false);
 
 // Check if TCPDF exists and load it properly
 if (!file_exists(__DIR__ . '/../includes/tcpdf/tcpdf.php')) {
@@ -13,12 +11,12 @@ if (!file_exists(__DIR__ . '/../includes/tcpdf/tcpdf.php')) {
 
 require_once __DIR__ . '/../includes/tcpdf/tcpdf.php';
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Admin') {
     header('Location: ../login.php');
     exit();
 }
 
-$type = $_GET['type'] ?? '';
+$type = $_REQUEST['type'] ?? '';
 
 switch($type) {
     case 'users':
@@ -265,7 +263,7 @@ function exportLibraryPDF() {
     global $pdo;
     
     try {
-        $stmt = $pdo->query('SELECT * FROM library_books ORDER BY title');
+        $stmt = $pdo->query('SELECT id, title, category, file_path, uploaded_by, uploaded_at FROM library_books ORDER BY title');
         $books = $stmt->fetchAll();
         
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
@@ -281,36 +279,31 @@ function exportLibraryPDF() {
         $pdf->SetFont('helvetica', '', 10);
         $pdf->AddPage();
         
-        $html = '
+$html = '
         <h2 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">EduWave - Library Books Report</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Generated on: ' . date('F j, Y H:i:s') . '</p>
         <table border="1" style="width: 100%; border-collapse: collapse; margin: 0 auto;">
             <thead>
                 <tr style="background-color: #3498db; color: white; font-weight: bold;">
                     <th style="padding: 8px; text-align: center;">ID</th>
-                    <th style="padding: 8px; text-align: center;">ISBN</th>
                     <th style="padding: 8px;">Title</th>
-                    <th style="padding: 8px;">Author</th>
                     <th style="padding: 8px; text-align: center;">Category</th>
-                    <th style="padding: 8px; text-align: center;">Status</th>
-                    <th style="padding: 8px; text-align: center;">Total Copies</th>
+                    <th style="padding: 8px;">File Path</th>
+                    <th style="padding: 8px; text-align: center;">Uploaded By</th>
+                    <th style="padding: 8px; text-align: center;">Upload Date</th>
                 </tr>
             </thead>
             <tbody>';
         
         foreach ($books as $book) {
-            $statusColor = $book['available_copies'] > 0 ? '#28a745' : '#dc3545';
-            $statusText = $book['available_copies'] > 0 ? 'Available' : 'Not Available';
-            
             $html .= '
                 <tr>
                     <td style="padding: 6px; text-align: center;">' . htmlspecialchars($book['id']) . '</td>
-                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($book['isbn'] ?? 'N/A') . '</td>
                     <td style="padding: 6px;">' . htmlspecialchars($book['title']) . '</td>
-                    <td style="padding: 6px;">' . htmlspecialchars($book['author']) . '</td>
                     <td style="padding: 6px; text-align: center;">' . htmlspecialchars($book['category'] ?? 'N/A') . '</td>
-                    <td style="padding: 6px; text-align: center; color: ' . $statusColor . '; font-weight: bold;">' . $statusText . '</td>
-                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($book['total_copies']) . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($book['file_path'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($book['uploaded_by'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . date('M j, Y', strtotime($book['uploaded_at'])) . '</td>
                 </tr>';
         }
         
@@ -333,7 +326,7 @@ function exportEventsPDF() {
     global $pdo;
     
     try {
-        $stmt = $pdo->query('SELECT * FROM calendar_events ORDER BY event_date');
+        $stmt = $pdo->query('SELECT id, title, start_date, end_date, user_id, class_id FROM calendar_events ORDER BY start_date');
         $events = $stmt->fetchAll();
         
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
@@ -349,37 +342,31 @@ function exportEventsPDF() {
         $pdf->SetFont('helvetica', '', 10);
         $pdf->AddPage();
         
-        $html = '
+$html = '
         <h2 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">EduWave - Calendar Events Report</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Generated on: ' . date('F j, Y H:i:s') . '</p>
         <table border="1" style="width: 100%; border-collapse: collapse; margin: 0 auto;">
             <thead>
                 <tr style="background-color: #3498db; color: white; font-weight: bold;">
                     <th style="padding: 8px; text-align: center;">ID</th>
-                    <th style="padding: 8px; text-align: center;">Event Date</th>
                     <th style="padding: 8px;">Event Title</th>
-                    <th style="padding: 8px;">Description</th>
-                    <th style="padding: 8px; text-align: center;">Event Type</th>
-                    <th style="padding: 8px; text-align: center;">Location</th>
+                    <th style="padding: 8px; text-align: center;">Start Date</th>
+                    <th style="padding: 8px; text-align: center;">End Date</th>
+                    <th style="padding: 8px; text-align: center;">Created By</th>
+                    <th style="padding: 8px; text-align: center;">Class</th>
                 </tr>
             </thead>
             <tbody>';
         
         foreach ($events as $event) {
-            $typeColor = '#000000';
-            if ($event['event_type'] === 'Holiday') $typeColor = '#28a745';
-            elseif ($event['event_type'] === 'Exam') $typeColor = '#dc3545';
-            elseif ($event['event_type'] === 'Meeting') $typeColor = '#ffc107';
-            elseif ($event['event_type'] === 'Activity') $typeColor = '#17a2b8';
-            
             $html .= '
                 <tr>
                     <td style="padding: 6px; text-align: center;">' . htmlspecialchars($event['id']) . '</td>
-                    <td style="padding: 6px; text-align: center;">' . date('M j, Y', strtotime($event['event_date'])) . '</td>
                     <td style="padding: 6px;">' . htmlspecialchars($event['title']) . '</td>
-                    <td style="padding: 6px;">' . htmlspecialchars(substr($event['description'] ?? 'N/A', 0, 100)) . '</td>
-                    <td style="padding: 6px; text-align: center; color: ' . $typeColor . '; font-weight: bold;">' . htmlspecialchars($event['event_type'] ?? 'General') . '</td>
-                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($event['location'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . date('M j, Y', strtotime($event['start_date'])) . '</td>
+                    <td style="padding: 6px; text-align: center;">' . ($event['end_date'] ? date('M j, Y', strtotime($event['end_date'])) : 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($event['user_id'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($event['class_id'] ?? 'N/A') . '</td>
                 </tr>';
         }
         

@@ -1,12 +1,17 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
+// Define required constant to prevent TCPDF config issues
+define('K_TCPDF_EXTERNAL_CONFIG', false);
+
+require_once __DIR__ . '/../includes/tcpdf/tcpdf.php';
+
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Registrar') {
     header('Location: ../login.php');
     exit();
 }
 
-$type = $_GET['type'] ?? '';
+$type = $_REQUEST['type'] ?? '';
 
 switch($type) {
     case 'students':
@@ -34,73 +39,70 @@ function exportStudentsPDF() {
         $stmt->execute();
         $students = $stmt->fetchAll();
         
-        // Start output buffering
-        ob_start();
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Students Report</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                h1 { color: #2c3e50; text-align: center; margin-bottom: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background-color: #3498db; color: white; padding: 10px; text-align: left; }
-                td { padding: 8px; border: 1px solid #ddd; }
-                .enrolled { color: #28a745; font-weight: bold; }
-                .not-enrolled { color: #dc3545; font-style: italic; }
-                .footer { text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <h1>EduWave - Students Management Report</h1>
-            <p style="text-align: center; color: #7f8c8d;">Generated on: <?php echo date('F j, Y H:i:s'); ?></p>
+        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        
+        $pdf->SetCreator(PDF_CREATOR);
+        $pdf->SetAuthor('EduWave');
+        $pdf->SetTitle('Students Management Report');
+        $pdf->SetSubject('Students Management Report');
+        
+        $pdf->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
+        $pdf->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
+        
+        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        
+        $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+        $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+        $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+        
+        $pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
+        
+        $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+        
+        $pdf->SetFont('helvetica', '', 10);
+        
+        $pdf->AddPage();
+        
+        $html = '
+        <h2 style="text-align: center; color: #2c3e50;">EduWave - Students Management Report</h2>
+        <p style="text-align: center; color: #7f8c8d;">Generated on: ' . date('F j, Y H:i:s') . '</p>
+        <br>
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #3498db; color: white; font-weight: bold;">
+                    <th style="padding: 8px; text-align: center;">ID</th>
+                    <th style="padding: 8px;">Name</th>
+                    <th style="padding: 8px;">Email</th>
+                    <th style="padding: 8px;">Class</th>
+                    <th style="padding: 8px;">Section</th>
+                    <th style="padding: 8px; text-align: center;">Joined Date</th>
+                </tr>
+            </thead>
+            <tbody>';
+        
+        foreach ($students as $student) {
+            $classColor = $student['grade_name'] ? '#28a745' : '#dc3545';
             
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Class</th>
-                        <th>Section</th>
-                        <th>Joined Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($students as $student): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($student['id']); ?></td>
-                        <td><?php echo htmlspecialchars($student['name']); ?></td>
-                        <td><?php echo htmlspecialchars($student['email']); ?></td>
-                        <td class="<?php echo $student['grade_name'] ? 'enrolled' : 'not-enrolled'; ?>">
-                            <?php echo htmlspecialchars($student['grade_name'] ?? 'N/A'); ?>
-                        </td>
-                        <td><?php echo htmlspecialchars($student['section_name'] ?? 'N/A'); ?></td>
-                        <td><?php echo date('M j, Y', strtotime($student['created_at'])); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            
-            <div class="footer">
-                <p>Total Students: <?php echo count($students); ?></p>
-                <p>© 2025 EduWave - Students Management Report</p>
-            </div>
-        </body>
-        </html>
-        <?php
+            $html .= '
+                <tr>
+                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($student['id']) . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($student['name']) . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($student['email']) . '</td>
+                    <td style="padding: 6px; color: ' . $classColor . '; font-weight: bold;">' . htmlspecialchars($student['grade_name'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($student['section_name'] ?? 'N/A') . '</td>
+                    <td style="padding: 6px; text-align: center;">' . date('M j, Y', strtotime($student['created_at'])) . '</td>
+                </tr>';
+        }
         
-        $html = ob_get_clean();
+        $html .= '
+            </tbody>
+        </table>
+        <br>
+        <p style="text-align: center; color: #95a5a6; font-size: 10px;">Total Students: ' . count($students) . '</p>';
         
-        // Set headers to force download
-        $fileName = 'students_management_' . date('Y-m-d') . '.pdf';
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        header('Content-Length: ' . strlen($html));
+        $pdf->writeHTML($html, true, false, true, false, '');
         
-        echo $html;
+        $pdf->Output('students_management_' . date('Y-m-d') . '.pdf', 'D');
         exit;
         
     } catch (Exception $e) {
@@ -122,70 +124,68 @@ function exportParentsPDF() {
         $stmt->execute();
         $parents = $stmt->fetchAll();
         
-        ob_start();
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Parents Report</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                h1 { color: #2c3e50; text-align: center; margin-bottom: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background-color: #3498db; color: white; padding: 10px; text-align: left; }
-                td { padding: 8px; border: 1px solid #ddd; }
-                .has-children { color: #28a745; font-weight: bold; }
-                .no-children { color: #ffc107; font-style: italic; }
-                .footer { text-align: center; margin-top: 20px; color: #95a5a6; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <h1>EduWave - Parents Management Report</h1>
-            <p style="text-align: center; color: #7f8c8d;">Generated on: <?php echo date('F j, Y H:i:s'); ?></p>
+        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        
+        $pdf->SetCreator(PDF_CREATOR);
+        $pdf->SetAuthor('EduWave');
+        $pdf->SetTitle('Parents Management Report');
+        $pdf->SetSubject('Parents Management Report');
+        
+        $pdf->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
+        $pdf->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
+        
+        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        
+        $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+        $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+        $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+        
+        $pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
+        
+        $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+        
+        $pdf->SetFont('helvetica', '', 10);
+        
+        $pdf->AddPage();
+        
+        $html = '
+        <h2 style="text-align: center; color: #2c3e50;">EduWave - Parents Management Report</h2>
+        <p style="text-align: center; color: #7f8c8d;">Generated on: ' . date('F j, Y H:i:s') . '</p>
+        <br>
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #3498db; color: white; font-weight: bold;">
+                    <th style="padding: 8px; text-align: center;">ID</th>
+                    <th style="padding: 8px;">Name</th>
+                    <th style="padding: 8px;">Email</th>
+                    <th style="padding: 8px; text-align: center;">Children Count</th>
+                    <th style="padding: 8px; text-align: center;">Registration Date</th>
+                </tr>
+            </thead>
+            <tbody>';
+        
+        foreach ($parents as $parent) {
+            $childrenColor = $parent['children_count'] > 0 ? '#28a745' : '#ffc107';
             
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Children Count</th>
-                        <th>Registration Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($parents as $parent): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($parent['id']); ?></td>
-                        <td><?php echo htmlspecialchars($parent['name']); ?></td>
-                        <td><?php echo htmlspecialchars($parent['email']); ?></td>
-                        <td class="<?php echo $parent['children_count'] > 0 ? 'has-children' : 'no-children'; ?>">
-                            <?php echo $parent['children_count']; ?>
-                        </td>
-                        <td><?php echo date('M j, Y', strtotime($parent['created_at'])); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            
-            <div class="footer">
-                <p>Total Parents: <?php echo count($parents); ?></p>
-                <p>© 2025 EduWave - Parents Management Report</p>
-            </div>
-        </body>
-        </html>
-        <?php
+            $html .= '
+                <tr>
+                    <td style="padding: 6px; text-align: center;">' . htmlspecialchars($parent['id']) . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($parent['name']) . '</td>
+                    <td style="padding: 6px;">' . htmlspecialchars($parent['email']) . '</td>
+                    <td style="padding: 6px; text-align: center; color: ' . $childrenColor . '; font-weight: bold;">' . $parent['children_count'] . '</td>
+                    <td style="padding: 6px; text-align: center;">' . date('M j, Y', strtotime($parent['created_at'])) . '</td>
+                </tr>';
+        }
         
-        $html = ob_get_clean();
+        $html .= '
+            </tbody>
+        </table>
+        <br>
+        <p style="text-align: center; color: #95a5a6; font-size: 10px;">Total Parents: ' . count($parents) . '</p>';
         
-        // Set headers to force download
-        $fileName = 'parents_management_' . date('Y-m-d') . '.pdf';
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        header('Content-Length: ' . strlen($html));
+        $pdf->writeHTML($html, true, false, true, false, '');
         
-        echo $html;
+        $pdf->Output('parents_management_' . date('Y-m-d') . '.pdf', 'D');
         exit;
         
     } catch (Exception $e) {
