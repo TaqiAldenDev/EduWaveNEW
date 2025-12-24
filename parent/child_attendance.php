@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'Parent';
 $parent_id = $_SESSION['user_id'];
 
-// Get parent's children
+// Get parent's childrens
 try {
     $children_stmt = $pdo->prepare('
         SELECT u.id as student_id, u.name as student_name, c.grade_name 
